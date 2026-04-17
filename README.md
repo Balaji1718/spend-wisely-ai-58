@@ -1,3 +1,3 @@
-# Welcome to your Lovable project
+# SpendPilot
 
-TODO: Document your project here
+A fully-featured personal expense tracking and financial management application with AI-powered insights.

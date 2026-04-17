@@ -2,10 +2,13 @@ const express = require("express");
 const Groq = require("groq-sdk");
 const router = express.Router();
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-
 router.post("/chat", async (req, res) => {
   try {
+    if (!process.env.GROQ_API_KEY) {
+      return res.status(503).json({ error: "GROQ_API_KEY is not configured" });
+    }
+
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
     const { message, expenses, analytics } = req.body;
     if (!message) return res.status(400).json({ error: "message required" });
 
