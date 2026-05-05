@@ -131,6 +131,8 @@ export default function Dashboard() {
                 categoryTotals={categoryTotals}
                 dailyTrend={dailyTrend}
                 monthBudgets={monthBudgets}
+                selectedMonth={selectedMonth}
+                selectedYear={selectedYear}
                 onOpenAddExpense={() => setTab("add-expense")}
                 onOpenAllExpenses={() => setTab("all-expenses")}
               />

@@ -53,6 +53,95 @@ export function getMonthBudgets(budgets: Budget[], month: number, year: number):
   return budgets.filter((b) => b.month === month && b.year === year);
 }
 
+export interface BudgetLeakageItem {
+  category: string;
+  spent: number;
+  limit: number;
+  leakage: number;
+}
+
+export interface BudgetLeakageSummary {
+  totalBudget: number;
+  totalSpent: number;
+  totalLeakage: number;
+  balanceAfterLeakage: number;
+  topLeakageCategory: BudgetLeakageItem | null;
+  leakageByCategory: BudgetLeakageItem[];
+}
+
+export function getBudgetLeakageSummary(
+  monthBudgets: Budget[],
+  categoryTotals: Record<string, number>
+): BudgetLeakageSummary {
+  const leakageByCategory = monthBudgets
+    .map((budget) => {
+      const spent = categoryTotals[budget.category] || 0;
+      const leakage = Math.max(0, spent - budget.limit);
+      return {
+        category: budget.category,
+        spent,
+        limit: budget.limit,
+        leakage,
+      };
+    })
+    .filter((item) => item.leakage > 0)
+    .sort((a, b) => b.leakage - a.leakage);
+
+  const totalBudget = monthBudgets.reduce((sum, budget) => sum + budget.limit, 0);
+  const totalSpent = Object.values(categoryTotals).reduce((sum, amount) => sum + amount, 0);
+  const totalLeakage = leakageByCategory.reduce((sum, item) => sum + item.leakage, 0);
+
+  return {
+    totalBudget,
+    totalSpent,
+    totalLeakage,
+    balanceAfterLeakage: Math.max(0, totalBudget - totalSpent),
+    topLeakageCategory: leakageByCategory[0] || null,
+    leakageByCategory,
+  };
+}
+
+export function buildBalancePlan(balanceAmount: number): string[] {
+  if (balanceAmount <= 0) {
+    return [
+      "No balance is left after leakage. Pause non-essential spending and rebuild your buffer before adding new expenses.",
+      "If you need to spend again, keep it limited to essentials until your next budget cycle.",
+    ];
+  }
+
+  const essentials = balanceAmount * 0.5;
+  const savings = balanceAmount * 0.3;
+  const flexible = balanceAmount - essentials - savings;
+
+  return [
+    `Set aside Rs.${Math.round(essentials).toLocaleString()} for essentials and fixed needs.`,
+    `Reserve Rs.${Math.round(savings).toLocaleString()} as a savings buffer to absorb future leakage.`,
+    `Keep Rs.${Math.round(flexible).toLocaleString()} for flexible spending so you stay in control.`,
+  ];
+}
+
+export function getDailyLeakageTrend(
+  expenses: Expense[],
+  monthBudgets: Budget[],
+  month: number,
+  year: number
+) {
+  const totalBudget = monthBudgets.reduce((sum, budget) => sum + budget.limit, 0);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const budgetPerDay = daysInMonth > 0 ? totalBudget / daysInMonth : 0;
+
+  return getDailyTrend(expenses).map((entry, index) => {
+    const dailyLeakage = Math.max(0, entry.amount - budgetPerDay);
+    const dayNumber = index + 1;
+    const budgetToDate = budgetPerDay * dayNumber;
+    return {
+      ...entry,
+      leakage: dailyLeakage,
+      budgetToDate,
+    };
+  });
+}
+
 export function getExceededBudgetMessages(
   monthBudgets: Budget[],
   categoryTotals: Record<string, number>
